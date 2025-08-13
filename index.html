@@ -50,6 +50,8 @@
         <button id="chooseImage" class="btn">Choose screenshot…</button>
         <input id="imageInput" type="file" accept="image/*" style="display:none" />
         <button id="clear" class="btn secondary">Clear</button>
+        <button id="flipH" class="btn secondary">Flip H</button>
+        <button id="flipV" class="btn secondary">Flip V</button>
       </div>
       <div class="hint">Image is auto‑scaled to cover, and un‑flipped / un‑mirrored.</div>
     </div>
@@ -81,136 +83,6 @@
     </div>
   </main>
 
-<script type="module">
-const mv = document.getElementById('mv');
-const chooseBtn = document.getElementById('chooseImage');
-const fileInput = document.getElementById('imageInput');
-const clearBtn = document.getElementById('clear');
-const exportBtn = document.getElementById('export');
-const copyBtn = document.getElementById('copy');
-const msg = document.getElementById('msg');
-
-// Center + spin 180° when ready
-mv.addEventListener('load', () => {
-  mv.cameraOrbit = '180deg 90deg auto';
-  mv.cameraTarget = 'auto';
-  mv.fieldOfView = '25deg';
-});
-
-function getScreenMaterial(){
-  const mats = mv.model?.materials || [];
-  return mats.find(m => (m.name||'') === 'Screen') || null;
-}
-
-// Offscreen canvas for cover-scaling & fixing flips
-const WORK_W = 2048, WORK_H = 4096;
-const work = document.createElement('canvas');
-work.width = WORK_W; work.height = WORK_H;
-const ctx = work.getContext('2d');
-
-function drawCover(img, { fixFlip=true, fixMirror=true } = {}){
-  ctx.setTransform(1,0,0,1,0,0);
-  ctx.clearRect(0,0,WORK_W,WORK_H);
-  let sx=1, sy=1, tx=0, ty=0;
-  if(fixMirror){ sx = -1; tx = WORK_W; }
-  if(fixFlip){ sy = -1; ty = WORK_H; }
-  ctx.setTransform(sx, 0, 0, sy, tx, ty);
-  const s = Math.max(WORK_W / img.naturalWidth, WORK_H / img.naturalHeight);
-  const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
-  const dx = (WORK_W - dw)/2, dy = (WORK_H - dh)/2;
-  ctx.drawImage(img, dx, dy, dw, dh);
-  ctx.setTransform(1,0,0,1,0,0);
-}
-
-async function applyCanvasToScreen(){
-  const mat = getScreenMaterial();
-  if(!mat) throw new Error('Screen material not found');
-  const tex = await mv.createTexture(work);
-  // Try both APIs depending on model-viewer version
-  if (mat.pbrMetallicRoughness.setBaseColorTexture) {
-    mat.pbrMetallicRoughness.setBaseColorFactor([1,1,1,1]);
-    mat.pbrMetallicRoughness.setBaseColorTexture(tex);
-  } else if (mat.pbrMetallicRoughness.baseColorTexture?.setTexture) {
-    mat.pbrMetallicRoughness.setBaseColorFactor([1,1,1,1]);
-    mat.pbrMetallicRoughness.baseColorTexture.setTexture(tex);
-  }
-  if (mat.setEmissiveTexture) {
-    mat.setEmissiveTexture(tex);
-    mat.setEmissiveFactor([1,1,1]);
-  }
-}
-
-async function handleFile(file){
-  const img = new Image();
-  img.crossOrigin = 'anonymous';
-  const url = URL.createObjectURL(file);
-  await new Promise((res, rej)=>{ img.onload=res; img.onerror=rej; img.src=url; });
-  drawCover(img, { fixFlip:true, fixMirror:true });
-  await applyCanvasToScreen();
-  msg.textContent = '✅ Screenshot applied';
-}
-
-// Export exactly what <model-viewer> renders (720x720)
-async function exportViewerPNG(){
-  await mv.updateComplete;
-  const blob = await mv.toBlob({ mimeType:'image/png', quality:1.0, idealAspect:1 });
-  return URL.createObjectURL(blob);
-}
-
-// UI wiring
-chooseBtn.addEventListener('click', ()=> fileInput.click());
-fileInput.addEventListener('change', async ()=>{
-  const f = fileInput.files?.[0]; if(!f) return;
-  try{
-    await handleFile(f);
-  }catch(e){
-    console.error(e);
-    msg.textContent = e?.message || 'Failed to apply image. Try another file / refresh.';
-  }
-});
-
-clearBtn.addEventListener('click', ()=>{
-  try{
-    const mat = getScreenMaterial(); if(!mat) return;
-    mat.pbrMetallicRoughness.baseColorTexture?.setTexture(null);
-    mat.setEmissiveTexture?.(null);
-    mat.setEmissiveFactor?.([0,0,0]);
-    msg.textContent = 'Cleared.';
-  }catch(e){
-    console.error(e);
-    msg.textContent = 'Could not clear.';
-  }
-});
-
-exportBtn.addEventListener('click', async ()=>{
-  try{
-    const url = await exportViewerPNG();
-    const a = document.createElement('a');
-    a.download = 'mockup-720.png';
-    a.href = url;
-    a.click();
-    msg.textContent = '✅ Exported.';
-  }catch(e){
-    console.error(e);
-    msg.textContent = 'Export failed.';
-  }
-});
-
-copyBtn.addEventListener('click', async ()=>{
-  try{
-    const url = await exportViewerPNG();
-    const blob = await (await fetch(url)).blob();
-    if (navigator.clipboard && window.ClipboardItem){
-      await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
-      msg.textContent = '📋 Copied to clipboard.';
-    } else {
-      msg.textContent = 'Clipboard API unavailable.';
-    }
-  }catch(e){
-    console.error(e);
-    msg.textContent = 'Clipboard copy failed.';
-  }
-});
-</script>
+<script type="module" src="./js/app.js"></script>
 </body>
 </html>
