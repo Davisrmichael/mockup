@@ -1,85 +1,225 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Mockup Maker — v1</title>
-  <script type="module" src="https://unpkg.com/@google/model-viewer@3.3.0/dist/model-viewer.min.js"></script>
-  <style>
-    :root{ --bg:#eef2f6; --panel:#fff; --ink:#0f172a; --muted:#667085; --line:#e5e7eb; --btn:#111827; --radius:16px;}
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;background:var(--bg);color:var(--ink);
-         display:grid;grid-template-columns:360px 1fr;gap:16px;padding:16px}
-    .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.06);
-           padding:16px;display:flex;flex-direction:column;gap:16px;height:calc(100vh - 32px);position:sticky;top:16px}
-    h1{font-size:18px;margin:0;display:flex;gap:8px;align-items:center}
-    .pill{font-size:12px;background:#e0ecff;color:#2563eb;padding:4px 8px;border-radius:999px;font-weight:700}
-    .section{border-top:1px solid var(--line);padding-top:12px;margin-top:4px}
-    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .btn{appearance:none;border:none;border-radius:10px;padding:10px 12px;background:var(--btn);color:#fff;font-weight:700;cursor:pointer}
-    .btn.secondary{background:#e5e7eb;color:#111827}
-    .hint{font-size:12px;color:var(--muted)}
-    #viewerWrap{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
-                box-shadow:0 8px 24px rgba(0,0,0,.06);padding:16px;display:flex;justify-content:center}
-    #viewer{width:720px;height:720px;border-radius:12px;overflow:hidden;background:#e5e7eb;display:flex;align-items:center;justify-content:center}
-    model-viewer{width:720px;height:720px;--poster-color: transparent;}
-    .toolbar{display:flex;justify-content:space-between;align-items:center}
-    #msg{min-height:1.2em;font-size:12px;color:#ef4444}
-    input[type="file"]{display:none}
-    .stack{display:flex;flex-direction:column;gap:8px;width:100%}
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup Maker — v1 (single file)</title>
+<script type="module" src="https://unpkg.com/@google/model-viewer@3.3.0/dist/model-viewer.min.js"></script>
+<style>
+  :root{
+    --bg:#e9edf1; --panel:#fff; --ink:#0f172a; --muted:#64748b; --line:#e5e7eb; --btn:#111827; --radius:16px;
+  }
+  *{box-sizing:border-box} html,body{height:100%}
+  body{
+    margin:0; font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+    background:var(--bg); color:var(--ink);
+    display:grid; grid-template-columns:360px 1fr; gap:16px; padding:16px;
+  }
+  .panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    box-shadow:0 8px 24px rgba(0,0,0,.06);
+    padding:16px; display:flex; flex-direction:column; gap:12px;
+    height:calc(100vh - 32px); position:sticky; top:16px
+  }
+  h1{font-size:18px;margin:0;display:flex;gap:8px;align-items:center}
+  .pill{font-size:12px;background:#e0ecff;color:#2563eb;padding:4px 8px;border-radius:999px;font-weight:700}
+  .section{border-top:1px solid var(--line);padding-top:12px;margin-top:8px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .btn{appearance:none;border:none;border-radius:10px;padding:10px 12px;background:var(--btn);color:#fff;font-weight:700;cursor:pointer}
+  .btn.secondary{background:#e5e7eb;color:#111827}
+  .hint{font-size:12px;color:var(--muted)}
+  .stage-outer{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.06);padding:16px;display:flex;justify-content:center}
+  .stage{width:720px;height:720px;border-radius:12px;overflow:hidden;position:relative;background:#e5e7eb;display:flex;align-items:center;justify-content:center}
+  model-viewer{width:720px;height:720px;--poster-color: transparent;}
+  #msg{min-height:18px;font-size:12px;color:#b91c1c}
+  .toolbar{display:flex;justify-content:space-between;align-items:center}
+</style>
 </head>
 <body>
   <aside class="panel">
     <h1>Mockup Maker <span class="pill">v1</span></h1>
 
     <div class="section">
-      <div class="hint">Model: iPhone 16 Pro Max (GLTF)</div>
-      <div class="row">
-        <button id="chooseImage" class="btn">Choose Screenshot…</button>
-        <input id="imageInput" type="file" accept="image/*">
-        <button id="clear" class="btn secondary">Clear</button>
-      </div>
-      <div class="row">
-        <button id="export" class="btn">Export PNG</button>
-        <button id="copy" class="btn secondary">Copy to clipboard</button>
-      </div>
-      <div id="msg" class="hint"></div>
+      <div class="row"><strong>Device</strong></div>
+      <div class="hint">Loads your model at <code>iPhone-15-pro-2/iPhone-15.gltf</code>. Starts front-on (180°) and centered.</div>
     </div>
 
     <div class="section">
-      <div class="hint">Tips</div>
-      <ul class="hint" style="margin:0 0 0 16px;padding:0;line-height:1.3">
-        <li>Exact 720×720 export.</li>
-        <li>Screen auto‑centers & covers without warping.</li>
-        <li>Model starts front‑on (180°).</li>
-      </ul>
+      <div class="row"><strong>Screen</strong></div>
+      <div class="row">
+        <button id="choose" class="btn">Choose screenshot…</button>
+        <input id="file" type="file" accept="image/*" style="display:none">
+        <button id="clear" class="btn secondary">Clear</button>
+      </div>
+      <div class="hint">Applies your image to the material named <code>Screen</code> using “cover” and fixed UV (no mirroring).</div>
     </div>
+
+    <div class="section">
+      <div class="row"><strong>Export</strong></div>
+      <div class="row">
+        <button id="export" class="btn">Export PNG (720×720)</button>
+        <button id="copy" class="btn secondary">Copy to clipboard</button>
+      </div>
+      <div class="hint">Export and copy match exactly what you see.</div>
+    </div>
+
+    <div id="msg"></div>
   </aside>
 
   <main>
-    <div class="toolbar"><div class="hint">Preview (export is exact)</div></div>
-    <div id="viewerWrap">
-      <div id="viewer">
-        <model-viewer id="mv"
-          src="iPhone-15-pro-2/iPhone-15.gltf"
-          camera-controls
-          camera-target="auto"
-          camera-orbit="180deg 90deg auto"
-          field-of-view="25deg"
-          environment-image="neutral"
-          exposure="1.0"
-          shadow-intensity="0"
-          disable-tap
-          interaction-prompt="none"
-          tone-mapping="neutral">
+    <div class="toolbar"><div class="hint">Preview (exact 720×720 export)</div></div>
+    <div class="stage-outer">
+      <div class="stage">
+        <model-viewer id="mv" camera-controls environment-image="neutral" exposure="1.0" autoplay shadow-intensity="0" ar-modes=""
+          disable-tap interaction-prompt="none" tone-mapping="neutral">
         </model-viewer>
       </div>
     </div>
   </main>
 
-  <script type="module" src="./app.js"></script>
+<script type="module">
+const MODEL_PATH = 'iPhone-15-pro-2/iPhone-15.gltf'; // <- your repo path (relative)
+
+const mv = document.getElementById('mv');
+const chooseBtn = document.getElementById('choose');
+const fileInput = document.getElementById('file');
+const clearBtn = document.getElementById('clear');
+const exportBtn = document.getElementById('export');
+const copyBtn = document.getElementById('copy');
+const msg = document.getElementById('msg');
+
+// 1) load model front-on and centered
+function setFrontOn() {
+  // 180° yaw, 90° polar (front), fixed radius that frames well; tweak radius if needed.
+  mv.cameraOrbit = `180deg 90deg 2.8m`;
+  mv.cameraTarget = `0m 0m 0m`;
+}
+mv.addEventListener('load', setFrontOn);
+mv.src = MODEL_PATH;
+
+// 2) util: find the material named "Screen"
+function getScreenMaterial(){
+  const mats = mv.model?.materials || [];
+  return mats.find(m => (m.name||'').toLowerCase() === 'screen');
+}
+
+// 3) draw image into a square canvas (cover), and also draw a flipped version (to fix UV mirroring)
+async function drawToCanvasCover(file){
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  img.crossOrigin = 'anonymous';
+  await new Promise((res, rej)=>{ img.onload = ()=>res(); img.onerror = rej; img.src = url; });
+
+  const size = 2048; // big enough for crisp result; model-viewer will downsample
+  const cvs = document.createElement('canvas');
+  cvs.width = cvs.height = size;
+  const ctx = cvs.getContext('2d');
+
+  // object-fit: cover
+  const iw = img.naturalWidth, ih = img.naturalHeight;
+  const s = Math.max(size/iw, size/ih);
+  const dw = iw*s, dh = ih*s;
+  const dx = (size - dw)/2;
+  const dy = (size - dh)/2;
+
+  // draw a non-mirrored version first
+  ctx.clearRect(0,0,size,size);
+  ctx.drawImage(img, dx, dy, dw, dh);
+
+  // also produce a vertically flipped copy (for models with V flipped)
+  const flipped = document.createElement('canvas');
+  flipped.width = flipped.height = size;
+  const fctx = flipped.getContext('2d');
+  fctx.translate(0, size);
+  fctx.scale(1, -1);
+  fctx.drawImage(cvs, 0, 0);
+
+  URL.revokeObjectURL(url);
+  return { normal: cvs, flipped };
+}
+
+// 4) apply the canvas as baseColor (+ emissive for brightness)
+async function applyCanvasToScreen(canvas){
+  const mat = getScreenMaterial();
+  if(!mat) throw new Error('No material named "Screen" found in model.');
+
+  // create textures
+  const tex = await mv.createTexture(canvas);
+  mat.pbrMetallicRoughness.setBaseColorFactor([1,1,1,1]);
+  mat.pbrMetallicRoughness.setBaseColorTexture(tex);
+
+  // brighten
+  mat.setEmissiveTexture(tex);
+  mat.setEmissiveFactor([1,1,1]);
+
+  // appearance tweaks
+  mat.pbrMetallicRoughness.metallicFactor = 0.0;
+  mat.pbrMetallicRoughness.roughnessFactor = 0.9;
+  mat.alphaMode = 'OPAQUE';
+}
+
+// 5) UI wiring
+chooseBtn.addEventListener('click', ()=> fileInput.click());
+fileInput.addEventListener('change', async ()=>{
+  msg.textContent = '';
+  const f = fileInput.files?.[0];
+  if(!f) return;
+  try{
+    // render both, try normal first; if looks mirrored you can toggle below.
+    const { normal/*, flipped*/ } = await drawToCanvasCover(f);
+    await mv.updateComplete;
+    await applyCanvasToScreen(normal);
+  }catch(e){
+    console.error(e);
+    msg.textContent = e?.message || 'Failed to apply image. Try another file / refresh.';
+  }
+});
+
+clearBtn.addEventListener('click', ()=>{
+  const mat = getScreenMaterial();
+  if(!mat) return;
+  mat.pbrMetallicRoughness.baseColorTexture?.setTexture(null);
+  mat.setEmissiveTexture(null);
+  mat.setEmissiveFactor([0,0,0]);
+  msg.textContent = '';
+});
+
+// 6) Export exactly what you see (720×720)
+async function snapshotBlob(){
+  await mv.updateComplete;
+  // model-viewer snapshot
+  const blob = await mv.toBlob({mimeType:'image/png', quality:1.0, idealAspect:1});
+  return blob;
+}
+
+exportBtn.addEventListener('click', async ()=>{
+  try{
+    const blob = await snapshotBlob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'mockup-720.png';
+    a.click();
+    setTimeout(()=> URL.revokeObjectURL(a.href), 2000);
+  }catch(e){
+    console.error(e);
+    msg.textContent = 'Export failed.';
+  }
+});
+
+copyBtn.addEventListener('click', async ()=>{
+  try{
+    const blob = await snapshotBlob();
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+    msg.textContent = 'Copied to clipboard ✅';
+    setTimeout(()=> msg.textContent = '', 1500);
+  }catch(e){
+    console.error(e);
+    msg.textContent = 'Copy failed (browser may block clipboard).';
+  }
+});
+
+// 7) Make sure it’s framed and centered on first paint and after export
+mv.addEventListener('poster-dismissed', setFrontOn);
+</script>
 </body>
 </html>
