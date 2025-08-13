@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mockup Maker — v1 (single file, canvas→blob fix)</title>
+<title>Mockup Maker — v1 (robust texture apply)</title>
 <script type="module" src="https://unpkg.com/@google/model-viewer@3.3.0/dist/model-viewer.min.js"></script>
 <style>
   :root{
@@ -56,7 +56,7 @@
         <label class="small"><input type="checkbox" id="flipV"> Flip vertically (if mirrored)</label>
         <label class="small"><input type="checkbox" id="flipH"> Flip horizontally</label>
       </div>
-      <div class="hint">Applies to material named <code>Screen</code>, using “cover” (no warping).</div>
+      <div class="hint">Targets material named <code>Screen</code>; uses cover scaling (no warp).</div>
     </div>
 
     <div class="section">
@@ -65,7 +65,7 @@
         <button id="export" class="btn">Export PNG (720×720)</button>
         <button id="copy" class="btn secondary">Copy to clipboard</button>
       </div>
-      <div class="hint">Export/Copy match exactly what you see.</div>
+      <div class="hint">Export/Copy exactly matches the preview.</div>
     </div>
 
     <div id="msg"></div>
@@ -83,7 +83,7 @@
   </main>
 
 <script type="module">
-const MODEL_PATH = 'iPhone-15-pro-2/iPhone-15.gltf'; // your repo path
+const MODEL_PATH = 'iPhone-15-pro-2/iPhone-15.gltf';
 
 const mv = document.getElementById('mv');
 const chooseBtn = document.getElementById('choose');
@@ -95,16 +95,14 @@ const msg = document.getElementById('msg');
 const flipV = document.getElementById('flipV');
 const flipH = document.getElementById('flipH');
 
-let lastCanvas = null; // remember last drawn canvas for reapply when flipping
-
 function setFrontOn() {
   mv.cameraOrbit = `180deg 90deg 2.8m`;
   mv.cameraTarget = `0m 0m 0m`;
 }
 mv.addEventListener('load', setFrontOn);
+mv.addEventListener('poster-dismissed', setFrontOn);
 mv.src = MODEL_PATH;
 
-// helpers
 function getScreenMaterial(){
   const mats = mv.model?.materials || [];
   return mats.find(m => (m.name||'').toLowerCase() === 'screen');
@@ -123,7 +121,6 @@ function drawCoverToCanvas(img, {flipV=false, flipH=false}={}){
   const dy = (size - dh)/2;
 
   ctx.save();
-  // apply flips around center
   if (flipH || flipV) {
     ctx.translate(size/2, size/2);
     ctx.scale(flipH ? -1 : 1, flipV ? -1 : 1);
@@ -140,20 +137,45 @@ async function applyCanvasToScreen(canvas){
   const mat = getScreenMaterial();
   if(!mat) throw new Error('No material named "Screen" found in model.');
 
-  // Convert canvas → PNG Blob URL (fixes the error you saw)
   const blob = await new Promise(res => canvas.toBlob(res, 'image/png', 1));
   if(!blob) throw new Error('Could not create texture blob');
   const url = URL.createObjectURL(blob);
 
   try{
     const tex = await mv.createTexture(url);
-    mat.pbrMetallicRoughness.setBaseColorFactor([1,1,1,1]);
-    mat.pbrMetallicRoughness.setBaseColorTexture(tex);
-    mat.setEmissiveTexture(tex);
-    mat.setEmissiveFactor([1,1,1]);
-    mat.pbrMetallicRoughness.metallicFactor = 0.0;
-    mat.pbrMetallicRoughness.roughnessFactor = 0.9;
+
+    // Always make the base white so texture shows correctly
+    if (mat.pbrMetallicRoughness?.setBaseColorFactor) {
+      mat.pbrMetallicRoughness.setBaseColorFactor([1,1,1,1]);
+    }
+
+    // Robustly set base color texture with whatever API is available
+    let baseApplied = false;
+    if (mat.pbrMetallicRoughness?.baseColorTexture?.setTexture) {
+      mat.pbrMetallicRoughness.baseColorTexture.setTexture(tex);
+      baseApplied = true;
+    } else if (mat.pbrMetallicRoughness?.setBaseColorTexture) {
+      mat.pbrMetallicRoughness.setBaseColorTexture(tex);
+      baseApplied = true;
+    } else if (mat.setBaseColorTexture) {
+      mat.setBaseColorTexture(tex);
+      baseApplied = true;
+    }
+
+    // Always set emissive as well (bright screen)
+    if (mat.setEmissiveTexture) mat.setEmissiveTexture(tex);
+    if (mat.setEmissiveFactor) mat.setEmissiveFactor([1,1,1]);
+
+    // So the glass doesn't look metallic
+    if (mat.pbrMetallicRoughness) {
+      mat.pbrMetallicRoughness.metallicFactor = 0.0;
+      mat.pbrMetallicRoughness.roughnessFactor = 0.9;
+    }
     mat.alphaMode = 'OPAQUE';
+
+    if (!baseApplied) {
+      console.warn('BaseColor apply API not found; using emissive only (should still show the image).');
+    }
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -166,9 +188,9 @@ async function handleFile(file){
   const url = URL.createObjectURL(file);
   try{
     await new Promise((res, rej)=>{ img.onload = res; img.onerror = rej; img.src = url; });
-    lastCanvas = drawCoverToCanvas(img, { flipV: flipV.checked, flipH: flipH.checked });
+    const canvas = drawCoverToCanvas(img, { flipV: flipV.checked, flipH: flipH.checked });
     await mv.updateComplete;
-    await applyCanvasToScreen(lastCanvas);
+    await applyCanvasToScreen(canvas);
   }catch(e){
     console.error(e);
     msg.textContent = e?.message || 'Failed to apply image. Try another file / refresh.';
@@ -184,31 +206,22 @@ fileInput.addEventListener('change', async ()=>{
   if(!f) return;
   await handleFile(f);
 });
-flipV.addEventListener('change', async ()=>{
-  if(!lastCanvas) return;
-  // Rebuild from last file? We don't keep the original file, so ask user to reselect.
-  msg.textContent = 'Flip changed — choose screenshot again to reapply.';
-});
-flipH.addEventListener('change', async ()=>{
-  if(!lastCanvas) return;
-  msg.textContent = 'Flip changed — choose screenshot again to reapply.';
-});
+flipV.addEventListener('change', ()=> { msg.textContent = 'Flip changed — choose screenshot again to reapply.'; });
+flipH.addEventListener('change', ()=> { msg.textContent = 'Flip changed — choose screenshot again to reapply.'; });
 
 clearBtn.addEventListener('click', ()=>{
   const mat = getScreenMaterial();
   if(!mat) return;
-  mat.pbrMetallicRoughness.baseColorTexture?.setTexture(null);
-  mat.setEmissiveTexture(null);
-  mat.setEmissiveFactor([0,0,0]);
+  mat.pbrMetallicRoughness?.baseColorTexture?.setTexture?.(null);
+  mat.setEmissiveTexture?.(null);
+  mat.setEmissiveFactor?.([0,0,0]);
   msg.textContent = '';
-  lastCanvas = null;
 });
 
-// Export exactly what you see (720×720)
+// Export (exact 720×720)
 async function snapshotBlob(){
   await mv.updateComplete;
-  const blob = await mv.toBlob({mimeType:'image/png', quality:1.0, idealAspect:1});
-  return blob;
+  return await mv.toBlob({mimeType:'image/png', quality:1.0, idealAspect:1});
 }
 exportBtn.addEventListener('click', async ()=>{
   try{
@@ -231,12 +244,9 @@ copyBtn.addEventListener('click', async ()=>{
     setTimeout(()=> msg.textContent = '', 1500);
   }catch(e){
     console.error(e);
-    msg.textContent = 'Copy failed (browser may block clipboard).';
+    msg.textContent = 'Copy failed (clipboard permission).';
   }
 });
-
-// keep it framed on first paint
-mv.addEventListener('poster-dismissed', setFrontOn);
 </script>
 </body>
 </html>
