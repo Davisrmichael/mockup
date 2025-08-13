@@ -1,7 +1,8 @@
 import { getScreenMaterial } from './viewer.js';
 
-const WORK_W = 2048;
-const WORK_H = 4096;
+// Use ~19.5:9 aspect to match iPhone display (reduces vertical stretch)
+const WORK_W = 1179;
+const WORK_H = 2556;
 
 export class ScreenTexture {
   constructor(modelViewer) {
@@ -79,14 +80,18 @@ export class ScreenTexture {
         throw new Error('Model materials not available');
       }
       
-      // Check if createTexture method is available
-      if (typeof this.modelViewer.createTexture !== 'function') {
-        throw new Error('createTexture method not available on model-viewer');
-      }
-      
       console.log('Model materials:', this.modelViewer.model.materials.length);
       console.log('Screen material:', mat);
-      console.log('createTexture method available:', typeof this.modelViewer.createTexture);
+      
+      // Debug what's available on model-viewer
+      console.log('Model-viewer properties:', {
+        hasCreateTexture: typeof this.modelViewer.createTexture === 'function',
+        hasUpdateComplete: typeof this.modelViewer.updateComplete !== 'undefined',
+        hasRequestUpdate: typeof this.modelViewer.requestUpdate === 'function',
+        hasModel: typeof this.modelViewer.model !== 'undefined',
+        createTextureType: typeof this.modelViewer.createTexture,
+        availableMethods: Object.getOwnPropertyNames(this.modelViewer).filter(name => typeof this.modelViewer[name] === 'function')
+      });
       
       // Ensure the canvas is properly prepared
       if (!this.canvas || !this.ctx) {
@@ -100,145 +105,60 @@ export class ScreenTexture {
       console.log('Canvas dimensions:', this.canvas.width, 'x', this.canvas.height);
       console.log('Canvas data URL length:', this.canvas.toDataURL().length);
       
-      let tex;
+      // Create texture using data URL approach
+      console.log('Creating texture from canvas data URL...');
       
-      try {
-        // Try blob method first
-        const blob = await new Promise(resolve => {
-          this.canvas.toBlob(resolve, 'image/png');
-        });
-        
-        if (!blob) {
-          throw new Error('Failed to convert canvas to blob');
-        }
-        
-        console.log('Blob created successfully, size:', blob.size);
-        console.log('Blob type:', blob.type);
-        
-        // Create texture from blob
-        console.log('Attempting to create texture from blob...');
-        tex = await this.modelViewer.createTexture(blob);
-        console.log('Texture created from blob successfully');
-      } catch (blobError) {
-        console.warn('Blob method failed, trying direct canvas method:', blobError);
-        console.warn('Blob error details:', {
-          name: blobError.name,
-          message: blobError.message,
-          stack: blobError.stack
-        });
-        
-        try {
-          // Fallback to direct canvas method
-          console.log('Attempting to create texture from canvas directly...');
-          tex = await this.modelViewer.createTexture(this.canvas);
-          console.log('Texture created from canvas directly');
-        } catch (canvasError) {
-          console.error('Both blob and canvas methods failed:', canvasError);
-          console.error('Canvas error details:', {
-            name: canvasError.name,
-            message: canvasError.message,
-            stack: canvasError.stack
-          });
-          console.error('Canvas state:', {
-            width: this.canvas.width,
-            height: this.canvas.height,
-            hasContext: !!this.ctx,
-            contextState: this.ctx ? 'valid' : 'invalid'
-          });
-          
-          // Try to get more information about the model-viewer state
-          console.error('Model-viewer state:', {
-            hasModel: !!this.modelViewer.model,
-            modelMaterials: this.modelViewer.model?.materials?.length || 0,
-            createTextureType: typeof this.modelViewer.createTexture,
-            modelViewerReady: this.modelViewer.readyState
-          });
-          
-          // Try to get more information about the canvas
-          try {
-            const dataURL = this.canvas.toDataURL();
-            console.error('Canvas data URL length:', dataURL.length);
-            console.error('Canvas data URL preview:', dataURL.substring(0, 100) + '...');
-          } catch (dataURLError) {
-            console.error('Failed to get canvas data URL:', dataURLError);
-          }
-          
-          // Try to get more information about the model-viewer methods
-          console.error('Model-viewer methods:', {
-            hasCreateTexture: typeof this.modelViewer.createTexture === 'function',
-            hasUpdateComplete: typeof this.modelViewer.updateComplete !== 'undefined',
-            hasRequestUpdate: typeof this.modelViewer.requestUpdate === 'function',
-            hasModel: typeof this.modelViewer.model !== 'undefined'
-          });
-          
-          // Try to get more information about the model-viewer properties
-          console.error('Model-viewer properties:', {
-            readyState: this.modelViewer.readyState,
-            loading: this.modelViewer.loading,
-            modelStatus: this.modelViewer.modelStatus,
-            hasModel: !!this.modelViewer.model
-          });
-          
-          throw new Error(`Texture creation failed: ${canvasError.message}`);
-        }
-      }
+      // Convert canvas to data URL
+      const dataURL = this.canvas.toDataURL('image/png');
+      console.log('Canvas data URL created, length:', dataURL.length);
       
-      // Validate texture object
-      if (!tex) {
-        throw new Error('Texture creation failed - no texture object returned');
-      }
+      // Create an image element from the data URL
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
       
-      // Check if the texture has the expected properties
-      if (typeof tex !== 'object') {
-        throw new Error(`Texture creation failed - unexpected type: ${typeof tex}`);
-      }
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = dataURL;
+      });
       
-      console.log('Texture object:', tex);
-      console.log('Texture type:', typeof tex);
-      console.log('Texture constructor:', tex.constructor.name);
+      console.log('Image created from data URL successfully');
+      
+      // Create texture via model-viewer from data URL and apply to material
+      console.log('Creating texture via element API from data URL...');
+      const tex = await this.modelViewer.createTexture(dataURL);
       
       if (mat.pbrMetallicRoughness.setBaseColorTexture) {
-        try {
-          mat.pbrMetallicRoughness.setBaseColorFactor([1, 1, 1, 1]);
-          mat.pbrMetallicRoughness.setBaseColorTexture(tex);
-          console.log('Base color texture set via setBaseColorTexture');
-        } catch (error) {
-          console.error('Failed to set base color texture via setBaseColorTexture:', error);
-          throw error;
-        }
+        mat.pbrMetallicRoughness.setBaseColorFactor([1, 1, 1, 1]);
+        mat.pbrMetallicRoughness.setBaseColorTexture(tex);
+        console.log('Base color texture set via setBaseColorTexture');
       } else if (mat.pbrMetallicRoughness.baseColorTexture?.setTexture) {
-        try {
-          mat.pbrMetallicRoughness.setBaseColorFactor([1, 1, 1, 1]);
-          mat.pbrMetallicRoughness.baseColorTexture.setTexture(tex);
-          console.log('Base color texture set via baseColorTexture.setTexture');
-        } catch (error) {
-          console.error('Failed to set base color texture via baseColorTexture.setTexture:', error);
-          throw error;
-        }
+        mat.pbrMetallicRoughness.setBaseColorFactor([1, 1, 1, 1]);
+        mat.pbrMetallicRoughness.baseColorTexture.setTexture(tex);
+        console.log('Base color texture set via baseColorTexture.setTexture');
       } else {
-        console.warn('No suitable method found to set base color texture');
+        console.warn('No method available to set base color texture');
       }
       
       if (mat.setEmissiveTexture) {
-        try {
-          mat.setEmissiveTexture(tex);
-          mat.setEmissiveFactor([1, 1, 1]);
-          console.log('Emissive texture set');
-        } catch (error) {
-          console.error('Failed to set emissive texture:', error);
-          throw error;
-        }
-      } else {
-        console.warn('No setEmissiveTexture method found');
+        mat.setEmissiveTexture(tex);
+        mat.setEmissiveFactor([1, 1, 1]);
+        console.log('Emissive texture set');
       }
-      
-      console.log('Texture applied to material successfully');
       
       // Force a model update to ensure changes are applied
       this.modelViewer.requestUpdate();
       
       // Wait a bit for the update to complete
       await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Debug the material state after our changes
+      console.log('Material state after texture application:', {
+        hasBaseColorTexture: !!mat.pbrMetallicRoughness.baseColorTexture,
+        baseColorFactor: mat.pbrMetallicRoughness.baseColorFactor,
+        hasEmissiveTexture: !!mat.emissiveTexture,
+        emissiveFactor: mat.emissiveFactor
+      });
       
       // Verify that the texture was properly set after update
       if (mat.pbrMetallicRoughness.baseColorTexture) {
@@ -249,7 +169,7 @@ export class ScreenTexture {
         console.log('Emissive texture verified after update:', mat.emissiveTexture);
       }
       
-      // Final verification that the texture was applied
+      // Final verification that the texture was applied and is working
       console.log('Final material state:', {
         hasBaseColorTexture: !!mat.pbrMetallicRoughness.baseColorTexture,
         hasEmissiveTexture: !!mat.emissiveTexture,
@@ -258,9 +178,9 @@ export class ScreenTexture {
       });
       
       // Additional verification that the texture is working
-      if (tex && typeof tex === 'object') {
-        console.log('Texture object properties:', Object.keys(tex));
-        console.log('Texture object prototype:', Object.getPrototypeOf(tex));
+      if (img && typeof img === 'object') {
+        console.log('Texture object properties:', Object.keys(img));
+        console.log('Texture object prototype:', Object.getPrototypeOf(img));
       }
       
       // Final verification that the texture was applied and is working

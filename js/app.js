@@ -1,4 +1,4 @@
-import { initViewer } from './viewer.js';
+import { initViewer, resetView } from './viewer.js';
 import { ScreenTexture } from './screen-texture.js';
 import { ExportViewport } from './export-viewport.js';
 
@@ -11,8 +11,9 @@ const copyBtn = document.getElementById('copy');
 const flipHBtn = document.getElementById('flipH');
 const flipVBtn = document.getElementById('flipV');
 const msg = document.getElementById('msg');
+const resetBtn = document.getElementById('resetView');
 
-const state = { flipH: false, flipV: false, lastFile: null };
+const state = { flipH: false, flipV: true, lastFile: null };
 
 const screen = new ScreenTexture(mv);
 const exporter = new ExportViewport(mv);
@@ -70,12 +71,14 @@ function bindUI() {
   clearBtn?.addEventListener('click', () => handleClear());
   exportBtn?.addEventListener('click', () => handleExport());
   copyBtn?.addEventListener('click', () => handleCopy());
-  flipHBtn?.addEventListener('click', async () => {
-    state.flipH = !state.flipH;
+  resetBtn?.addEventListener('click', () => resetView(mv));
+  // checkbox change handlers
+  flipHBtn?.addEventListener('change', async () => {
+    state.flipH = !!flipHBtn.checked;
     if (state.lastFile) await handleFile(state.lastFile);
   });
-  flipVBtn?.addEventListener('click', async () => {
-    state.flipV = !state.flipV;
+  flipVBtn?.addEventListener('change', async () => {
+    state.flipV = !!flipVBtn.checked;
     if (state.lastFile) await handleFile(state.lastFile);
   });
 }
