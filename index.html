@@ -1,62 +1,216 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, viewport-fit=cover"
-    />
-    <title>Mockup Maker · v1</title>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Mockup Maker — v1 (single-file)</title>
+<script type="module" src="https://unpkg.com/@google/model-viewer@3.3.0/dist/model-viewer.min.js"></script>
+<style>
+  :root{
+    --bg:#eef2f6; --panel:#fff; --ink:#0f172a; --muted:#64748b; --line:#e5e7eb; --btn:#111827; --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    display:grid; grid-template-columns:360px 1fr; gap:16px; padding:16px;
+  }
+  .panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    box-shadow:0 8px 24px rgba(0,0,0,.06); padding:16px; display:flex; flex-direction:column; gap:12px;
+    height:calc(100vh - 32px); position:sticky; top:16px;
+  }
+  h1{font-size:18px;margin:0;display:flex;gap:8px;align-items:center}
+  .pill{font-size:12px;background:#e0ecff;color:#2563eb;padding:4px 8px;border-radius:999px;font-weight:700}
+  .section{border-top:1px solid var(--line);padding-top:12px;margin-top:4px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .btn{appearance:none;border:none;border-radius:10px;padding:10px 12px;background:var(--btn);color:#fff;font-weight:700;cursor:pointer}
+  .btn.secondary{background:#e5e7eb;color:#111827}
+  .hint{font-size:12px;color:var(--muted)}
+  .stage-outer{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.06);padding:16px;display:flex;justify-content:center}
+  .stage{width:720px;height:720px;border-radius:12px;overflow:hidden;position:relative;background:#e5e7eb;display:flex;align-items:center;justify-content:center}
+  model-viewer{width:720px;height:720px;--poster-color: transparent;}
+  .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  #msg{font-size:12px;color:#2563eb}
+</style>
+</head>
+<body>
+  <aside class="panel">
+    <h1>Mockup Maker <span class="pill">v1</span></h1>
 
-    <!-- model-viewer (ESM) -->
-    <script type="module"
-      src="https://unpkg.com/@google/model-viewer@^3.4.0/dist/model-viewer.min.js?module">
-    </script>
-
-    <style>
-      :root { --pad:16px; --bg:#eef0f3; --panel:#fff; --text:#111; --muted:#6b7280; }
-      * { box-sizing:border-box; }
-      html, body { height:100%; }
-      body {
-        margin:0; font:14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-        background:var(--bg); color:var(--text);
-      }
-      .wrap {
-        display:flex; gap:20px; padding:20px; align-items:flex-start;
-        max-width:1280px; margin:0 auto;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="wrap">
-      <aside class="panel">
-        <h1>Mockup Maker <small>v1</small></h1>
-        <section>
-          <h2>Device</h2>
-          <p>Loads iPhone-15-pro-2/iPhone-15.gltf. Starts front-on (180°) and centered.</p>
-        </section>
-        <section>
-          <h2>Screen</h2>
-          <input type="file" id="imageInput" accept="image/*" hidden>
-          <button id="chooseImage">Choose screenshot…</button>
-          <button id="clear">Clear</button>
-          <div>
-            <label><input type="checkbox" id="flipV"> Flip vertically</label>
-            <label><input type="checkbox" id="flipH"> Flip horizontally</label>
-          </div>
-        </section>
-        <section>
-          <h2>Export</h2>
-          <button id="export">Export PNG (720×720)</button>
-          <button id="copy">Copy to clipboard</button>
-        </section>
-        <p id="msg"></p>
-      </aside>
-      <model-viewer id="mv" src="iPhone-15-pro-2/iPhone-15.gltf"
-        ar shadow-intensity="1" camera-controls touch-action="pan-y"
-        style="width:720px;height:720px;background:#fff;">
-      </model-viewer>
+    <div class="section">
+      <div class="row"><strong>Device</strong></div>
+      <div class="hint">Loads GLTF from <code>iPhone-15-pro-2/iPhone-15.gltf</code>.</div>
     </div>
-    <script type="module" src="js/app.js"></script>
-  </body>
+
+    <div class="section">
+      <div class="row"><strong>Screen</strong></div>
+      <div class="row">
+        <button id="chooseImage" class="btn">Choose screenshot…</button>
+        <input id="imageInput" type="file" accept="image/*" style="display:none" />
+        <button id="clear" class="btn secondary">Clear</button>
+      </div>
+      <div class="hint">Image is auto‑scaled to cover, and un‑flipped / un‑mirrored.</div>
+    </div>
+
+    <div class="section">
+      <div class="row"><strong>Export</strong></div>
+      <div class="row toolbar">
+        <button id="export" class="btn">Export PNG (720×720)</button>
+        <button id="copy" class="btn secondary">Copy to clipboard</button>
+        <span id="msg" class="hint"></span>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+    <div class="stage-outer">
+      <div class="stage">
+        <model-viewer id="mv"
+          src="iPhone-15-pro-2/iPhone-15.gltf"
+          camera-controls
+          exposure="1.0"
+          shadow-intensity="0"
+          ar-modes=""
+          disable-tap
+          interaction-prompt="none"
+          tone-mapping="neutral">
+        </model-viewer>
+      </div>
+    </div>
+  </main>
+
+<script type="module">
+const mv = document.getElementById('mv');
+const chooseBtn = document.getElementById('chooseImage');
+const fileInput = document.getElementById('imageInput');
+const clearBtn = document.getElementById('clear');
+const exportBtn = document.getElementById('export');
+const copyBtn = document.getElementById('copy');
+const msg = document.getElementById('msg');
+
+// Center + spin 180° when ready
+mv.addEventListener('load', () => {
+  mv.cameraOrbit = '180deg 90deg auto';
+  mv.cameraTarget = 'auto';
+  mv.fieldOfView = '25deg';
+});
+
+function getScreenMaterial(){
+  const mats = mv.model?.materials || [];
+  return mats.find(m => (m.name||'') === 'Screen') || null;
+}
+
+// Offscreen canvas for cover-scaling & fixing flips
+const WORK_W = 2048, WORK_H = 4096;
+const work = document.createElement('canvas');
+work.width = WORK_W; work.height = WORK_H;
+const ctx = work.getContext('2d');
+
+function drawCover(img, { fixFlip=true, fixMirror=true } = {}){
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,WORK_W,WORK_H);
+  let sx=1, sy=1, tx=0, ty=0;
+  if(fixMirror){ sx = -1; tx = WORK_W; }
+  if(fixFlip){ sy = -1; ty = WORK_H; }
+  ctx.setTransform(sx, 0, 0, sy, tx, ty);
+  const s = Math.max(WORK_W / img.naturalWidth, WORK_H / img.naturalHeight);
+  const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
+  const dx = (WORK_W - dw)/2, dy = (WORK_H - dh)/2;
+  ctx.drawImage(img, dx, dy, dw, dh);
+  ctx.setTransform(1,0,0,1,0,0);
+}
+
+async function applyCanvasToScreen(){
+  const mat = getScreenMaterial();
+  if(!mat) throw new Error('Screen material not found');
+  const tex = await mv.createTexture(work);
+  // Try both APIs depending on model-viewer version
+  if (mat.pbrMetallicRoughness.setBaseColorTexture) {
+    mat.pbrMetallicRoughness.setBaseColorFactor([1,1,1,1]);
+    mat.pbrMetallicRoughness.setBaseColorTexture(tex);
+  } else if (mat.pbrMetallicRoughness.baseColorTexture?.setTexture) {
+    mat.pbrMetallicRoughness.setBaseColorFactor([1,1,1,1]);
+    mat.pbrMetallicRoughness.baseColorTexture.setTexture(tex);
+  }
+  if (mat.setEmissiveTexture) {
+    mat.setEmissiveTexture(tex);
+    mat.setEmissiveFactor([1,1,1]);
+  }
+}
+
+async function handleFile(file){
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  const url = URL.createObjectURL(file);
+  await new Promise((res, rej)=>{ img.onload=res; img.onerror=rej; img.src=url; });
+  drawCover(img, { fixFlip:true, fixMirror:true });
+  await applyCanvasToScreen();
+  msg.textContent = '✅ Screenshot applied';
+}
+
+// Export exactly what <model-viewer> renders (720x720)
+async function exportViewerPNG(){
+  await mv.updateComplete;
+  const blob = await mv.toBlob({ mimeType:'image/png', quality:1.0, idealAspect:1 });
+  return URL.createObjectURL(blob);
+}
+
+// UI wiring
+chooseBtn.addEventListener('click', ()=> fileInput.click());
+fileInput.addEventListener('change', async ()=>{
+  const f = fileInput.files?.[0]; if(!f) return;
+  try{
+    await handleFile(f);
+  }catch(e){
+    console.error(e);
+    msg.textContent = e?.message || 'Failed to apply image. Try another file / refresh.';
+  }
+});
+
+clearBtn.addEventListener('click', ()=>{
+  try{
+    const mat = getScreenMaterial(); if(!mat) return;
+    mat.pbrMetallicRoughness.baseColorTexture?.setTexture(null);
+    mat.setEmissiveTexture?.(null);
+    mat.setEmissiveFactor?.([0,0,0]);
+    msg.textContent = 'Cleared.';
+  }catch(e){
+    console.error(e);
+    msg.textContent = 'Could not clear.';
+  }
+});
+
+exportBtn.addEventListener('click', async ()=>{
+  try{
+    const url = await exportViewerPNG();
+    const a = document.createElement('a');
+    a.download = 'mockup-720.png';
+    a.href = url;
+    a.click();
+    msg.textContent = '✅ Exported.';
+  }catch(e){
+    console.error(e);
+    msg.textContent = 'Export failed.';
+  }
+});
+
+copyBtn.addEventListener('click', async ()=>{
+  try{
+    const url = await exportViewerPNG();
+    const blob = await (await fetch(url)).blob();
+    if (navigator.clipboard && window.ClipboardItem){
+      await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+      msg.textContent = '📋 Copied to clipboard.';
+    } else {
+      msg.textContent = 'Clipboard API unavailable.';
+    }
+  }catch(e){
+    console.error(e);
+    msg.textContent = 'Clipboard copy failed.';
+  }
+});
+</script>
+</body>
 </html>
